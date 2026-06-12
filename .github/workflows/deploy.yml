@@ -14,36 +14,20 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
-env:
-  DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'kevin' }}
-
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, photo-site-prod]
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:github-actions
-
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.DEPLOY_SERVER_IP }}" >> ~/.ssh/known_hosts
-
       - name: Sync source and proxy files
-        env:
-          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
-          SOURCE_PATH: /home/kevin/DockerCompose/photo-site/source
-          PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
         run: |
+          set -e
+          SOURCE_PATH=/home/kevin/DockerCompose/photo-site/source
+          PROXY_DEPLOY_PATH=/home/kevin/DockerCompose/photo-site-proxy
+
+          mkdir -p "$SOURCE_PATH" "$PROXY_DEPLOY_PATH" /srv/data4tb/photo-site/data
           tar \
             --exclude=.git \
             --exclude=node_modules \
@@ -52,45 +36,33 @@ jobs:
             --exclude=data \
             --exclude='.env*' \
             -czf /tmp/photo-site-source.tgz .
+          tar -xzf /tmp/photo-site-source.tgz -C "$SOURCE_PATH"
 
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" \
-            "mkdir -p '${SOURCE_PATH}' '${PROXY_DEPLOY_PATH}' /srv/data4tb/photo-site/data"
-          scp -i ~/.ssh/deploy_key /tmp/photo-site-source.tgz \
-            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:/home/kevin/DockerCompose/photo-site/photo-site-source.tgz"
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" \
-            "cd '${SOURCE_PATH}' && tar -xzf ../photo-site-source.tgz"
+          cp deploy/proxy/docker-compose.yml "$PROXY_DEPLOY_PATH/docker-compose.yml"
+          cp deploy/proxy/nginx.conf "$PROXY_DEPLOY_PATH/nginx.conf"
 
-          scp -i ~/.ssh/deploy_key deploy/proxy/docker-compose.yml \
-            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/docker-compose.yml"
-          scp -i ~/.ssh/deploy_key deploy/proxy/nginx.conf \
-            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/nginx.conf"
-
-      - name: Deploy app and proxy on amd64
-        env:
-          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
-          SOURCE_DEPLOY_PATH: /home/kevin/DockerCompose/photo-site/source/deploy
-          PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
+      - name: Deploy app and proxy
         run: |
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "
-            set -e
-            cd '${SOURCE_DEPLOY_PATH}'
-            docker compose up -d --build --force-recreate
-            cd '${PROXY_DEPLOY_PATH}'
-            docker compose up -d --force-recreate
-            docker image prune -af --filter 'until=24h' || true
-          "
+          set -e
+          cd /home/kevin/DockerCompose/photo-site/source/deploy
+          docker compose up -d --build --force-recreate
+          cd /home/kevin/DockerCompose/photo-site-proxy
+          docker compose up -d --force-recreate
+          docker image prune -af --filter 'until=24h' || true
 
       - name: Health check
         run: |
+          set -e
           for i in $(seq 1 24); do
-            if curl -fsS "https://ching.sisihome.org/api/categories"; then
+            if curl -fsS https://ching.sisihome.org/api/categories; then
               exit 0
             fi
             sleep 5
           done
 
-          ssh -i ~/.ssh/deploy_key "${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_SERVER_IP }}" \
-            "cd /home/kevin/DockerCompose/photo-site/source/deploy && docker compose ps && docker logs photo-site --tail 80" || true
+          cd /home/kevin/DockerCompose/photo-site/source/deploy
+          docker compose ps
+          docker logs photo-site --tail 80
           exit 1
 
       - name: Admin session check
@@ -98,6 +70,7 @@ jobs:
           ADMIN_USERNAME: ${{ secrets.PHOTO_SITE_ADMIN_USERNAME }}
           ADMIN_PASSWORD: ${{ secrets.PHOTO_SITE_ADMIN_PASSWORD }}
         run: |
+          set -e
           if [ -z "${ADMIN_USERNAME}" ] || [ -z "${ADMIN_PASSWORD}" ]; then
             echo "Skipping admin session check because PHOTO_SITE_ADMIN_USERNAME/PASSWORD are not set."
             exit 0
