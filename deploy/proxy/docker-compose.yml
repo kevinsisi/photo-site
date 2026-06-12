@@ -1,0 +1,8 @@
+services:
+  photo-site-proxy:
+    image: nginx:1.27-alpine
+    container_name: photo-site-proxy
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

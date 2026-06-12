@@ -3,6 +3,17 @@ import { db } from '../db/index.js';
 
 export const publicRouter = Router();
 
+// GET /api/settings
+publicRouter.get('/settings', (_req, res) => {
+  const rows = db
+    .prepare('SELECT key, value FROM settings')
+    .all() as Array<{ key: string; value: string }>;
+  const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
+  res.json({
+    siteDisplayName: settings.siteDisplayName ?? 'KEVIN PHOTOGRAPHY',
+  });
+});
+
 // GET /api/categories
 publicRouter.get('/categories', (_req, res) => {
   const rows = db
@@ -27,8 +38,8 @@ publicRouter.get('/photos', (req, res) => {
     rows = db
       .prepare(
         `SELECT id, category_id AS categoryId, title,
-                'thumb/' || filename AS thumbUrl,
-                'medium/' || filename AS mediumUrl,
+                '/photos/thumb/' || filename AS thumbUrl,
+                '/photos/medium/' || filename AS mediumUrl,
                 sort_order AS sortOrder
          FROM photos
          WHERE published = 1 AND category_id = ?
@@ -39,8 +50,8 @@ publicRouter.get('/photos', (req, res) => {
     rows = db
       .prepare(
         `SELECT id, category_id AS categoryId, title,
-                'thumb/' || filename AS thumbUrl,
-                'medium/' || filename AS mediumUrl,
+                '/photos/thumb/' || filename AS thumbUrl,
+                '/photos/medium/' || filename AS mediumUrl,
                 sort_order AS sortOrder
          FROM photos
          WHERE published = 1

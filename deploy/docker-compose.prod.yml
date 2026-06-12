@@ -1,0 +1,17 @@
+services:
+  photo-site:
+    image: kevin950805/photo-site:${IMAGE_TAG:-latest}
+    container_name: photo-site
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${HOST_PORT:-6423}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      CLIENT_DIST_DIR: /app/packages/client/dist
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
+    volumes:
+      - ${PHOTO_SITE_DATA_DIR:-/srv/data4tb/photo-site/data}:/data

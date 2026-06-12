@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { to: '/admin/photos', label: '作品管理' },
   { to: '/admin/categories', label: '分類管理' },
   { to: '/admin/plans', label: '方案管理' },
+  { to: '/admin/settings', label: '網站設定' },
 ];
 
 function Spinner() {

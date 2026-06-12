@@ -11,6 +11,7 @@ import { authRouter } from './routes/auth.js';
 import { adminPhotosRouter } from './routes/adminPhotos.js';
 import { adminCategoriesRouter } from './routes/adminCategories.js';
 import { adminPlansRouter } from './routes/adminPlans.js';
+import { adminSettingsRouter } from './routes/adminSettings.js';
 
 function checkRequiredEnv(): void {
   const required = ['ADMIN_USERNAME', 'ADMIN_PASSWORD_HASH', 'SESSION_SECRET'];
@@ -60,9 +61,13 @@ app.use(
 
 // --- Static photo files ---
 const photosDir = path.join(dataDir, 'photos');
-app.use('/photos/thumb', express.static(path.join(photosDir, 'thumb')));
-app.use('/photos/medium', express.static(path.join(photosDir, 'medium')));
-app.use('/photos/original', express.static(path.join(photosDir, 'original')));
+const photoStaticOptions = {
+  maxAge: '30d',
+  immutable: true,
+};
+app.use('/photos/thumb', express.static(path.join(photosDir, 'thumb'), photoStaticOptions));
+app.use('/photos/medium', express.static(path.join(photosDir, 'medium'), photoStaticOptions));
+app.use('/photos/original', express.static(path.join(photosDir, 'original'), photoStaticOptions));
 
 // --- Public API ---
 app.use('/api', publicRouter);
@@ -74,6 +79,19 @@ app.use('/api/admin', authRouter);
 app.use('/api/admin/photos', adminPhotosRouter);
 app.use('/api/admin/categories', adminCategoriesRouter);
 app.use('/api/admin/plans', adminPlansRouter);
+app.use('/api/admin/settings', adminSettingsRouter);
+
+// --- Client app ---
+const clientDistDir =
+  process.env.CLIENT_DIST_DIR ?? path.resolve(process.cwd(), 'packages/client/dist');
+const clientIndexPath = path.join(clientDistDir, 'index.html');
+
+if (fs.existsSync(clientIndexPath)) {
+  app.use(express.static(clientDistDir));
+  app.get('*', (_req, res) => {
+    res.sendFile(clientIndexPath);
+  });
+}
 
 // --- Global error handler ---
 app.use(

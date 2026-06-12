@@ -1,0 +1,114 @@
+name: Deploy to amd64 Desktop
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Exact image tag to deploy'
+        required: true
+        type: string
+
+env:
+  DOCKERHUB_USERNAME: kevin950805
+  IMAGE_NAME: photo-site
+  HOST_PORT: 6423
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'kevin' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Resolve image tag
+        id: resolve-image
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_SERVER_IP }}" >> ~/.ssh/known_hosts
+
+      - name: Sync deployment files
+        env:
+          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
+          IMAGE_TAG: ${{ steps.resolve-image.outputs.image_tag }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "mkdir -p '${DEPLOY_PATH}' '${PROXY_DEPLOY_PATH}' /srv/data4tb/photo-site/data"
+          scp -i ~/.ssh/deploy_key deploy/docker-compose.prod.yml "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${DEPLOY_PATH}/docker-compose.yml"
+          scp -i ~/.ssh/deploy_key deploy/proxy/docker-compose.yml "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/docker-compose.yml"
+          scp -i ~/.ssh/deploy_key deploy/proxy/nginx.conf "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/nginx.conf"
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "test -f '${DEPLOY_PATH}/.env' || touch '${DEPLOY_PATH}/.env'"
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "grep -v '^IMAGE_TAG=' '${DEPLOY_PATH}/.env' > '${DEPLOY_PATH}/.env.tmp' || true; printf 'IMAGE_TAG=%s\n' '${IMAGE_TAG}' >> '${DEPLOY_PATH}/.env.tmp'; mv '${DEPLOY_PATH}/.env.tmp' '${DEPLOY_PATH}/.env'"
+
+      - name: Deploy app and proxy
+        env:
+          DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "
+            set -e
+            cd '${DEPLOY_PATH}'
+            docker compose pull
+            docker compose up -d --force-recreate
+            cd '${PROXY_DEPLOY_PATH}'
+            docker compose up -d
+            docker image prune -af --filter 'until=24h' || true
+          "
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS "https://ching.sisihome.org/api/categories"; then
+              exit 0
+            fi
+            sleep 5
+          done
+
+          ssh -i ~/.ssh/deploy_key "${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_SERVER_IP }}" \
+            "cd '${{ secrets.DEPLOY_PATH }}' && docker compose ps && docker logs photo-site --tail 80" || true
+          exit 1
+
+      - name: Admin session check
+        env:
+          ADMIN_USERNAME: ${{ secrets.PHOTO_SITE_ADMIN_USERNAME }}
+          ADMIN_PASSWORD: ${{ secrets.PHOTO_SITE_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "${ADMIN_USERNAME}" ] || [ -z "${ADMIN_PASSWORD}" ]; then
+            echo "Skipping admin session check because PHOTO_SITE_ADMIN_USERNAME/PASSWORD are not set."
+            exit 0
+          fi
+
+          cookie_file="$(mktemp)"
+          curl -fsS -c "$cookie_file" \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"${ADMIN_USERNAME}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+            https://ching.sisihome.org/api/admin/login
+          curl -fsS -b "$cookie_file" https://ching.sisihome.org/api/admin/me

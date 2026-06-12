@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: 單一容器部署
-專案 SHALL 提供 multi-stage Dockerfile：build 階段編譯 client 與 server，runtime 階段由 server 同時提供 API 與前端靜態檔；映像 MUST 支援 arm64（RPi）。
+專案 SHALL 提供 multi-stage Dockerfile：build 階段編譯 client 與 server，runtime 階段由 server 同時提供 API 與前端靜態檔；目前部署目標為 amd64 desktop（`100.73.52.37`）。
 
 #### Scenario: 建置並啟動容器
 - **WHEN** 執行 docker compose up 啟動服務

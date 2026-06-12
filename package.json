@@ -1,6 +1,11 @@
 {
   "name": "photo-site",
+  "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "start": "npm run start --workspace @photo-site/server"
+  },
   "workspaces": [
     "packages/*"
   ]

@@ -12,6 +12,8 @@ adminPhotosRouter.use(requireAuth);
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+const THUMB_WIDTH = 640;
+const MEDIUM_WIDTH = 1600;
 
 // Multer stores upload temporarily in memory
 const upload = multer({
@@ -63,8 +65,8 @@ adminPhotosRouter.get('/', (_req, res) => {
   const rows = db
     .prepare(
       `SELECT id, category_id AS categoryId, title, filename, published, sort_order AS sortOrder,
-              'thumb/' || filename AS thumbUrl,
-              'medium/' || filename AS mediumUrl
+              '/photos/thumb/' || filename AS thumbUrl,
+              '/photos/medium/' || filename AS mediumUrl
        FROM photos
        ORDER BY sort_order ASC`
     )
@@ -131,16 +133,16 @@ adminPhotosRouter.post('/', upload.single('file'), async (req, res) => {
     await sharp(req.file.buffer).webp({ quality: 90 }).toFile(originalPath);
     writtenFiles.push(originalPath);
 
-    // Generate thumb ~800px wide
+    // Generate a small grid image so category switching only loads low-res assets.
     await sharp(req.file.buffer)
-      .resize({ width: 800, withoutEnlargement: true })
+      .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
       .webp({ quality: 80 })
       .toFile(thumbPath);
     writtenFiles.push(thumbPath);
 
-    // Generate medium ~1600px wide
+    // Generate a medium preview for lightbox use without loading the original.
     await sharp(req.file.buffer)
-      .resize({ width: 1600, withoutEnlargement: true })
+      .resize({ width: MEDIUM_WIDTH, withoutEnlargement: true })
       .webp({ quality: 85 })
       .toFile(mediumPath);
     writtenFiles.push(mediumPath);

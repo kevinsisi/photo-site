@@ -9,6 +9,7 @@ import LoginPage from './pages/admin/LoginPage';
 import PhotosPage from './pages/admin/PhotosPage';
 import CategoriesPage from './pages/admin/CategoriesPage';
 import PlansPage from './pages/admin/PlansPage';
+import SettingsPage from './pages/admin/SettingsPage';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="photos" element={<PhotosPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="plans" element={<PlansPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Catch-all */}

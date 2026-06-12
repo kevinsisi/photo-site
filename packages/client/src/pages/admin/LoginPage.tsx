@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { BRAND_NAME } from '../../constants';
+import { useSiteSettings } from '../../hooks/useSiteSettings';
 
 export default function LoginPage() {
   const { loggedIn, loading, login } = useAuth();
   const navigate = useNavigate();
+  const { siteDisplayName } = useSiteSettings();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +46,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <p className="text-center text-xs font-semibold tracking-[0.25em] text-[var(--color-sage-800)] mb-8">
-          {BRAND_NAME}
+          {siteDisplayName}
         </p>
 
         <div className="bg-white border border-[var(--color-sage-200)] rounded-lg p-8 shadow-sm">

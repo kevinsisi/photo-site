@@ -24,6 +24,10 @@ export interface Plan {
   sortOrder: number;
 }
 
+export interface SiteSettings {
+  siteDisplayName: string;
+}
+
 async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(path, { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) {
@@ -43,4 +47,8 @@ export function fetchPhotos(categoryId?: number): Promise<Photo[]> {
 
 export function fetchPlans(): Promise<Plan[]> {
   return apiFetch<Plan[]>('/api/plans');
+}
+
+export function fetchSettings(): Promise<SiteSettings> {
+  return apiFetch<SiteSettings>('/api/settings');
 }

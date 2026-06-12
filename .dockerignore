@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+.gemini
+.opencode
+node_modules
+packages/*/node_modules
+packages/*/dist
+data
+npm-debug.log*
+.env*
+Dockerfile
+deploy/*.local.yml

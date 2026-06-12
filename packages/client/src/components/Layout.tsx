@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { BRAND_NAME, APP_VERSION, CONTACT_INSTAGRAM, CONTACT_EMAIL, CONTACT_LINE } from '../constants';
+import { APP_VERSION, CONTACT_INSTAGRAM, CONTACT_EMAIL, CONTACT_LINE } from '../constants';
+import { useSiteSettings } from '../hooks/useSiteSettings';
 
 const NAV_LINKS = [
   { to: '/', label: '首頁', exact: true },
@@ -65,6 +66,7 @@ function NavItem({
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { siteDisplayName } = useSiteSettings();
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text-primary)]">
@@ -76,7 +78,7 @@ export default function Layout() {
             to="/"
             className="text-xs font-semibold tracking-[0.25em] text-sage-800 hover:text-sage-600 transition-colors"
           >
-            {BRAND_NAME}
+            {siteDisplayName}
           </Link>
 
           {/* Desktop nav */}
@@ -142,7 +144,7 @@ export default function Layout() {
       <footer className="border-t border-sage-100 py-10 mt-16">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-xs tracking-[0.2em] text-sage-800 font-semibold">
-            {BRAND_NAME}
+            {siteDisplayName}
           </p>
 
           <div className="flex items-center gap-6">

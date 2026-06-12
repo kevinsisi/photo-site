@@ -37,5 +37,14 @@ export function initDb(): void {
       published INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  db.prepare(
+    `INSERT OR IGNORE INTO settings (key, value) VALUES ('siteDisplayName', 'KEVIN PHOTOGRAPHY')`
+  ).run();
 }
