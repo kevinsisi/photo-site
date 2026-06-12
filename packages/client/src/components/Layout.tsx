@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { APP_VERSION, CONTACT_INSTAGRAM, CONTACT_EMAIL, CONTACT_LINE } from '../constants';
-import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useSiteSettings, useApplyAppearance } from '../hooks/useSiteSettings';
 
 const NAV_LINKS = [
   { to: '/', label: '首頁', exact: true },
@@ -37,8 +37,8 @@ function NavItem({
         onClick={onClick}
         className={`text-sm tracking-widest transition-colors duration-200 ${
           isActive
-            ? 'text-sage-700 border-b border-sage-500'
-            : 'text-[var(--color-text-secondary)] hover:text-sage-600'
+            ? 'text-ink border-b border-accent'
+            : 'text-muted-ink hover:text-ink'
         }`}
       >
         {label}
@@ -54,8 +54,8 @@ function NavItem({
       className={({ isActive: navActive }) =>
         `text-sm tracking-widest transition-colors duration-200 ${
           navActive
-            ? 'text-sage-700 border-b border-sage-500'
-            : 'text-[var(--color-text-secondary)] hover:text-sage-600'
+            ? 'text-ink border-b border-accent'
+            : 'text-muted-ink hover:text-ink'
         }`
       }
     >
@@ -66,17 +66,19 @@ function NavItem({
 
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { siteDisplayName } = useSiteSettings();
+  const settings = useSiteSettings();
+  useApplyAppearance(settings);
+  const { siteDisplayName } = settings;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text-primary)]">
+    <div className="min-h-screen flex flex-col bg-canvas text-ink transition-colors duration-300">
       {/* Top navigation */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-sage-100">
+      <header className="sticky top-0 z-40 bg-canvas/95 backdrop-blur-sm border-b border-line">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Brand */}
           <Link
             to="/"
-            className="text-xs font-semibold tracking-[0.25em] text-sage-800 hover:text-sage-600 transition-colors"
+            className="text-xs font-semibold tracking-[0.25em] text-ink hover:text-muted-ink transition-colors"
           >
             {siteDisplayName}
           </Link>
@@ -96,17 +98,17 @@ export default function Layout() {
             className="md:hidden flex flex-col justify-center items-center w-11 h-11 gap-1.5 focus:outline-none"
           >
             <span
-              className={`block w-6 h-px bg-sage-700 transition-transform duration-200 origin-center ${
+              className={`block w-6 h-px bg-ink transition-transform duration-200 origin-center ${
                 menuOpen ? 'translate-y-[7px] rotate-45' : ''
               }`}
             />
             <span
-              className={`block w-6 h-px bg-sage-700 transition-opacity duration-200 ${
+              className={`block w-6 h-px bg-ink transition-opacity duration-200 ${
                 menuOpen ? 'opacity-0' : ''
               }`}
             />
             <span
-              className={`block w-6 h-px bg-sage-700 transition-transform duration-200 origin-center ${
+              className={`block w-6 h-px bg-ink transition-transform duration-200 origin-center ${
                 menuOpen ? '-translate-y-[7px] -rotate-45' : ''
               }`}
             />
@@ -119,7 +121,7 @@ export default function Layout() {
             menuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'
           }`}
         >
-          <nav className="flex flex-col border-t border-sage-100 bg-white">
+          <nav className="flex flex-col border-t border-line bg-canvas">
             {NAV_LINKS.map((link) => (
               <NavItem
                 key={link.to}
@@ -141,9 +143,9 @@ export default function Layout() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-sage-100 py-10 mt-16">
+      <footer className="border-t border-line py-10 mt-16">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-xs tracking-[0.2em] text-sage-800 font-semibold">
+          <p className="text-xs tracking-[0.2em] text-ink font-semibold">
             {siteDisplayName}
           </p>
 
@@ -152,13 +154,13 @@ export default function Layout() {
               href={CONTACT_INSTAGRAM}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs tracking-widest text-[var(--color-text-secondary)] hover:text-sage-600 transition-colors"
+              className="text-xs tracking-widest text-muted-ink hover:text-ink transition-colors"
             >
               Instagram
             </a>
             <a
               href={CONTACT_EMAIL}
-              className="text-xs tracking-widest text-[var(--color-text-secondary)] hover:text-sage-600 transition-colors"
+              className="text-xs tracking-widest text-muted-ink hover:text-ink transition-colors"
             >
               Email
             </a>
@@ -166,13 +168,13 @@ export default function Layout() {
               href={CONTACT_LINE}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs tracking-widest text-[var(--color-text-secondary)] hover:text-sage-600 transition-colors"
+              className="text-xs tracking-widest text-muted-ink hover:text-ink transition-colors"
             >
               LINE
             </a>
           </div>
 
-          <p className="text-xs text-sage-300 tabular-nums">v{APP_VERSION}</p>
+          <p className="text-xs text-muted-ink/60 tabular-nums">v{APP_VERSION}</p>
         </div>
       </footer>
     </div>

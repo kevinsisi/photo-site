@@ -1,17 +1,12 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
+import { readSettings } from '../settings.js';
 
 export const publicRouter = Router();
 
 // GET /api/settings
 publicRouter.get('/settings', (_req, res) => {
-  const rows = db
-    .prepare('SELECT key, value FROM settings')
-    .all() as Array<{ key: string; value: string }>;
-  const settings = Object.fromEntries(rows.map((row) => [row.key, row.value]));
-  res.json({
-    siteDisplayName: settings.siteDisplayName ?? 'KEVIN PHOTOGRAPHY',
-  });
+  res.json(readSettings());
 });
 
 // GET /api/categories
@@ -37,7 +32,7 @@ publicRouter.get('/photos', (req, res) => {
     }
     rows = db
       .prepare(
-        `SELECT id, category_id AS categoryId, title,
+        `SELECT id, category_id AS categoryId, title, width, height,
                 '/photos/thumb/' || filename AS thumbUrl,
                 '/photos/medium/' || filename AS mediumUrl,
                 sort_order AS sortOrder
@@ -49,7 +44,7 @@ publicRouter.get('/photos', (req, res) => {
   } else {
     rows = db
       .prepare(
-        `SELECT id, category_id AS categoryId, title,
+        `SELECT id, category_id AS categoryId, title, width, height,
                 '/photos/thumb/' || filename AS thumbUrl,
                 '/photos/medium/' || filename AS mediumUrl,
                 sort_order AS sortOrder

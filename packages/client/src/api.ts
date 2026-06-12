@@ -13,6 +13,8 @@ export interface Photo {
   thumbUrl: string;
   mediumUrl: string;
   sortOrder: number;
+  width: number | null;
+  height: number | null;
 }
 
 export interface Plan {
@@ -26,6 +28,9 @@ export interface Plan {
 
 export interface SiteSettings {
   siteDisplayName: string;
+  theme: string;
+  layout: string;
+  animation: string;
 }
 
 async function apiFetch<T>(path: string): Promise<T> {

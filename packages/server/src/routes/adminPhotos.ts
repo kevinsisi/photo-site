@@ -65,6 +65,7 @@ adminPhotosRouter.get('/', (_req, res) => {
   const rows = db
     .prepare(
       `SELECT id, category_id AS categoryId, title, filename, published, sort_order AS sortOrder,
+              width, height,
               '/photos/thumb/' || filename AS thumbUrl,
               '/photos/medium/' || filename AS mediumUrl
        FROM photos
@@ -77,6 +78,8 @@ adminPhotosRouter.get('/', (_req, res) => {
       filename: string;
       published: number;
       sortOrder: number;
+      width: number | null;
+      height: number | null;
       thumbUrl: string;
       mediumUrl: string;
     }[];
@@ -127,14 +130,24 @@ adminPhotosRouter.post('/', upload.single('file'), async (req, res) => {
   const mediumPath = path.join(dirs.medium, filename);
 
   const writtenFiles: string[] = [];
+  let width: number | null = null;
+  let height: number | null = null;
 
   try {
-    // Save original (convert to webp for consistency)
-    await sharp(req.file.buffer).webp({ quality: 90 }).toFile(originalPath);
+    const meta = await sharp(req.file.buffer).metadata();
+    // EXIF orientation 5-8 means the image renders rotated 90°
+    const rotated = (meta.orientation ?? 1) >= 5;
+    width = (rotated ? meta.height : meta.width) ?? null;
+    height = (rotated ? meta.width : meta.height) ?? null;
+
+    // .rotate() applies EXIF orientation to pixels so portrait shots are
+    // stored upright and the recorded width/height match the actual file.
+    await sharp(req.file.buffer).rotate().webp({ quality: 90 }).toFile(originalPath);
     writtenFiles.push(originalPath);
 
     // Generate a small grid image so category switching only loads low-res assets.
     await sharp(req.file.buffer)
+      .rotate()
       .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
       .webp({ quality: 80 })
       .toFile(thumbPath);
@@ -142,6 +155,7 @@ adminPhotosRouter.post('/', upload.single('file'), async (req, res) => {
 
     // Generate a medium preview for lightbox use without loading the original.
     await sharp(req.file.buffer)
+      .rotate()
       .resize({ width: MEDIUM_WIDTH, withoutEnlargement: true })
       .webp({ quality: 85 })
       .toFile(mediumPath);
@@ -168,10 +182,10 @@ adminPhotosRouter.post('/', upload.single('file'), async (req, res) => {
 
   const result = db
     .prepare(
-      `INSERT INTO photos (category_id, title, filename, published, sort_order)
-       VALUES (?, ?, ?, 0, ?)`
+      `INSERT INTO photos (category_id, title, filename, published, sort_order, width, height)
+       VALUES (?, ?, ?, 0, ?, ?, ?)`
     )
-    .run(catId, safeTitle, filename, sortOrder);
+    .run(catId, safeTitle, filename, sortOrder, width, height);
 
   res.status(201).json({ id: result.lastInsertRowid });
 });

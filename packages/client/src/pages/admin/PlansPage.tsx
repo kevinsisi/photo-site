@@ -84,23 +84,23 @@ function PlanForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-3 bg-[var(--color-sage-50)] border border-[var(--color-sage-200)] rounded-lg p-5"
+      className="flex flex-col gap-3 bg-[var(--color-zinc-50)] border border-[var(--color-zinc-200)] rounded-lg p-5"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--color-sage-700)]">名稱 *</label>
+          <label className="text-xs text-[var(--color-zinc-700)]">名稱 *</label>
           <input
             type="text"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
             required
             disabled={saving}
-            className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+            className="border border-[var(--color-zinc-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50"
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-[var(--color-sage-700)]">價格 (NTD) *</label>
+          <label className="text-xs text-[var(--color-zinc-700)]">價格 (NTD) *</label>
           <input
             type="number"
             min="0"
@@ -109,31 +109,31 @@ function PlanForm({
             onChange={(e) => set('price', e.target.value)}
             required
             disabled={saving}
-            className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+            className="border border-[var(--color-zinc-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50"
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-[var(--color-sage-700)]">說明</label>
+        <label className="text-xs text-[var(--color-zinc-700)]">說明</label>
         <textarea
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
           disabled={saving}
           rows={2}
-          className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+          className="border border-[var(--color-zinc-200)] rounded px-3 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50"
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-xs text-[var(--color-sage-700)]">內容項目（每行一項）</label>
+        <label className="text-xs text-[var(--color-zinc-700)]">內容項目（每行一項）</label>
         <textarea
           value={form.itemsText}
           onChange={(e) => set('itemsText', e.target.value)}
           disabled={saving}
           rows={4}
           placeholder="每行輸入一個項目"
-          className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50 font-mono"
+          className="border border-[var(--color-zinc-200)] rounded px-3 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50 font-mono"
         />
       </div>
 
@@ -143,7 +143,7 @@ function PlanForm({
           checked={form.published}
           onChange={(e) => set('published', e.target.checked)}
           disabled={saving}
-          className="w-4 h-4 accent-[var(--color-sage-700)]"
+          className="w-4 h-4 accent-[var(--color-zinc-700)]"
         />
         上架
       </label>
@@ -158,7 +158,7 @@ function PlanForm({
         <button
           type="submit"
           disabled={saving || !form.name.trim()}
-          className="bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="bg-[var(--color-zinc-700)] hover:bg-[var(--color-zinc-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {saving && (
             <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -169,7 +169,7 @@ function PlanForm({
           type="button"
           onClick={onCancel}
           disabled={saving}
-          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-sage-700)] transition-colors"
+          className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-zinc-700)] transition-colors"
         >
           取消
         </button>
@@ -316,11 +316,11 @@ export default function PlansPage() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[var(--color-sage-900)]">方案管理</h1>
+        <h1 className="text-xl font-semibold text-[var(--color-zinc-900)]">方案管理</h1>
         {!showAddForm && (
           <button
             onClick={() => { setShowAddForm(true); setEditId(null); }}
-            className="bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm rounded px-4 py-1.5 transition-colors"
+            className="bg-[var(--color-zinc-700)] hover:bg-[var(--color-zinc-800)] text-white text-sm rounded px-4 py-1.5 transition-colors"
           >
             新增方案
           </button>
@@ -344,8 +344,8 @@ export default function PlansPage() {
       )}
 
       {/* Plan list */}
-      <section className="bg-white border border-[var(--color-sage-200)] rounded-lg overflow-hidden">
-        <h2 className="text-sm font-semibold text-[var(--color-sage-800)] px-6 py-4 border-b border-[var(--color-sage-100)]">
+      <section className="bg-white border border-[var(--color-zinc-200)] rounded-lg overflow-hidden">
+        <h2 className="text-sm font-semibold text-[var(--color-zinc-800)] px-6 py-4 border-b border-[var(--color-zinc-100)]">
           方案列表（{plans.length} 項）
         </h2>
 
@@ -355,7 +355,7 @@ export default function PlansPage() {
           </p>
         )}
 
-        <ul className="divide-y divide-[var(--color-sage-100)]">
+        <ul className="divide-y divide-[var(--color-zinc-100)]">
           {plans.map((plan, idx) => {
             const isEditing = editId === plan.id;
             const msg = rowMsg?.id === plan.id ? rowMsg : null;
@@ -376,13 +376,13 @@ export default function PlansPage() {
                         <span className="text-sm font-medium text-[var(--color-text-primary)]">
                           {plan.name}
                         </span>
-                        <span className="text-sm text-[var(--color-sage-700)] font-semibold">
+                        <span className="text-sm text-[var(--color-zinc-700)] font-semibold">
                           NT$ {plan.price.toLocaleString()}
                         </span>
                         <span
                           className={`text-xs rounded px-2 py-0.5 ${
                             plan.published
-                              ? 'bg-[var(--color-sage-100)] text-[var(--color-sage-800)]'
+                              ? 'bg-[var(--color-zinc-100)] text-[var(--color-zinc-800)]'
                               : 'bg-gray-100 text-gray-500'
                           }`}
                         >
@@ -424,7 +424,7 @@ export default function PlansPage() {
                     <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                       <button
                         onClick={() => handleTogglePublished(plan)}
-                        className="text-xs text-[var(--color-sage-700)] hover:text-[var(--color-sage-900)] transition-colors"
+                        className="text-xs text-[var(--color-zinc-700)] hover:text-[var(--color-zinc-900)] transition-colors"
                         title={plan.published ? '點擊下架' : '點擊上架'}
                       >
                         {plan.published ? '下架' : '上架'}
@@ -432,7 +432,7 @@ export default function PlansPage() {
 
                       <button
                         onClick={() => { setEditId(plan.id); setShowAddForm(false); }}
-                        className="text-xs text-[var(--color-sage-700)] hover:text-[var(--color-sage-900)] transition-colors"
+                        className="text-xs text-[var(--color-zinc-700)] hover:text-[var(--color-zinc-900)] transition-colors"
                       >
                         編輯
                       </button>
@@ -448,7 +448,7 @@ export default function PlansPage() {
                         <button
                           onClick={() => move(idx, 'up')}
                           disabled={idx === 0}
-                          className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                          className="text-[10px] text-[var(--color-zinc-600)] hover:text-[var(--color-zinc-900)] disabled:opacity-30 transition-colors leading-none px-1"
                           title="上移"
                         >
                           ▲
@@ -456,7 +456,7 @@ export default function PlansPage() {
                         <button
                           onClick={() => move(idx, 'down')}
                           disabled={idx === plans.length - 1}
-                          className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                          className="text-[10px] text-[var(--color-zinc-600)] hover:text-[var(--color-zinc-900)] disabled:opacity-30 transition-colors leading-none px-1"
                           title="下移"
                         >
                           ▼

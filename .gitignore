@@ -1,4 +1,6 @@
 node_modules
 dist
 /data
+packages/server/data
 .env
+.superpowers

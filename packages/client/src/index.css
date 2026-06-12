@@ -1,5 +1,79 @@
 @import "tailwindcss";
 
+/* =====================================================================
+   Appearance tokens — the only place theme colors are defined.
+   Public-site components must use these (via the @theme utilities below),
+   never hard-coded colors. Switching data-theme on <html> retints the
+   whole public site; a data-theme on any container scopes a preview.
+   ===================================================================== */
+:root,
+[data-theme="museum-white"] {
+  --bg: #faf8f4;
+  --surface: #ffffff;
+  --text: #2b2926;
+  --text-muted: #8a857c;
+  --accent: #2b2926;
+  --accent-contrast: #faf8f4;
+  --border: #e8e4dc;
+  --overlay: rgba(20, 18, 15, 0.88);
+}
+
+[data-theme="dark-gallery"] {
+  --bg: #121210;
+  --surface: #1c1b18;
+  --text: #eceae5;
+  --text-muted: #9a958a;
+  --accent: #c8a96a;
+  --accent-contrast: #121210;
+  --border: #2a2a26;
+  --overlay: rgba(0, 0, 0, 0.9);
+}
+
+[data-theme="sage"] {
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --text: #2a2a2a;
+  --text-muted: #6b7280;
+  --accent: #7a8a6b;
+  --accent-contrast: #ffffff;
+  --border: #dde2d6;
+  --overlay: rgba(28, 32, 24, 0.88);
+}
+
+[data-theme="film-warm"] {
+  --bg: #f3ece1;
+  --surface: #faf6ee;
+  --text: #3d3226;
+  --text-muted: #8d7f6c;
+  --accent: #8a6f4d;
+  --accent-contrast: #f3ece1;
+  --border: #e0d4c2;
+  --overlay: rgba(40, 32, 22, 0.88);
+}
+
+[data-theme="mono"] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #000000;
+  --text-muted: #767676;
+  --accent: #000000;
+  --accent-contrast: #ffffff;
+  --border: #e5e5e5;
+  --overlay: rgba(0, 0, 0, 0.92);
+}
+
+[data-theme="ink-blue"] {
+  --bg: #10141c;
+  --surface: #1a2029;
+  --text: #dde4ee;
+  --text-muted: #8a94a6;
+  --accent: #6e8cba;
+  --accent-contrast: #10141c;
+  --border: #232b3a;
+  --overlay: rgba(5, 8, 14, 0.9);
+}
+
+/* Legacy sage palette — admin pages only (fixed neutral admin design) */
 :root {
   --color-sage-50: #f4f6f1;
   --color-sage-100: #e8edd4;
@@ -29,13 +103,140 @@
   --color-sage-900: var(--color-sage-900);
 }
 
+/* Token-backed utilities: bg-canvas, bg-surface, text-ink, text-muted-ink,
+   bg-accent, text-on-accent, border-line… `inline` keeps the var reference
+   live so data-theme switches retint without rebuilding. */
+@theme inline {
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--text);
+  --color-muted-ink: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--accent-contrast);
+  --color-line: var(--border);
+}
+
 /* Base typography */
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Prevent horizontal overflow globally */
 body {
   overflow-x: hidden;
+}
+
+/* =====================================================================
+   Reveal animations — driven by data-anim on <html> (or a preview
+   container). Items start hidden per level; .revealed (added once by
+   useReveal when the item first enters the viewport) plays them in.
+   --reveal-delay staggers items within a row/column.
+   ===================================================================== */
+.reveal-item {
+  /* default (data-anim="off" or unset): visible, no motion */
+}
+
+[data-anim="subtle"] .reveal-item {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.6s ease var(--reveal-delay, 0s),
+    transform 0.6s ease var(--reveal-delay, 0s);
+}
+[data-anim="subtle"] .reveal-item.revealed {
+  opacity: 1;
+  transform: none;
+}
+
+[data-anim="curated"] .reveal-item {
+  opacity: 0;
+  transform: translateY(26px) scale(0.985);
+  filter: brightness(0.6);
+  transition:
+    opacity 1s cubic-bezier(0.22, 0.61, 0.36, 1) var(--reveal-delay, 0s),
+    transform 1s cubic-bezier(0.22, 0.61, 0.36, 1) var(--reveal-delay, 0s),
+    filter 1.15s ease var(--reveal-delay, 0s);
+}
+[data-anim="curated"] .reveal-item.revealed {
+  opacity: 1;
+  transform: none;
+  filter: brightness(1);
+}
+[data-anim="curated"] .reveal-caption {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.7s ease calc(var(--reveal-delay, 0s) + 0.35s),
+    transform 0.7s ease calc(var(--reveal-delay, 0s) + 0.35s);
+}
+[data-anim="curated"] .reveal-item.revealed .reveal-caption,
+[data-anim="curated"] .reveal-item.revealed + .reveal-caption {
+  opacity: 1;
+  transform: none;
+}
+
+[data-anim="dramatic"] .reveal-item {
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 0.9s cubic-bezier(0.77, 0, 0.18, 1) var(--reveal-delay, 0s);
+}
+[data-anim="dramatic"] .reveal-item img {
+  transform: scale(1.15);
+  transition: transform 1.25s cubic-bezier(0.22, 0.61, 0.36, 1) var(--reveal-delay, 0s);
+}
+[data-anim="dramatic"] .reveal-item.revealed {
+  clip-path: inset(0 0 0 0);
+}
+[data-anim="dramatic"] .reveal-item.revealed img {
+  transform: scale(1);
+}
+
+/* Category switch crossfade */
+.gallery-stage {
+  transition: opacity 0.22s ease;
+}
+.gallery-stage.is-fading {
+  opacity: 0;
+}
+
+/* Lightbox open animation — scales with the animation level */
+@keyframes lb-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lb-content-in {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.lightbox-backdrop {
+  animation: lb-backdrop-in 0.25s ease both;
+}
+.lightbox-content {
+  animation: lb-content-in 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+[data-anim="curated"] .lightbox-backdrop { animation-duration: 0.4s; }
+[data-anim="curated"] .lightbox-content { animation-duration: 0.55s; }
+[data-anim="dramatic"] .lightbox-backdrop { animation-duration: 0.45s; }
+[data-anim="dramatic"] .lightbox-content {
+  animation-duration: 0.6s;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.18, 1);
+}
+[data-anim="off"] .lightbox-backdrop,
+[data-anim="off"] .lightbox-content {
+  animation: none;
+}
+
+/* Accessibility: kill all reveal/lightbox motion when the OS asks for it */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-item,
+  .reveal-item img,
+  .reveal-caption,
+  .lightbox-backdrop,
+  .lightbox-content {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }

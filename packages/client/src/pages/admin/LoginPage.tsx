@@ -35,22 +35,22 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[var(--color-sage-50)]">
-        <div className="w-8 h-8 border-2 border-[var(--color-sage-300)] border-t-[var(--color-sage-700)] rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-[var(--color-zinc-50)]">
+        <div className="w-8 h-8 border-2 border-[var(--color-zinc-300)] border-t-[var(--color-zinc-700)] rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-sage-50)] px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-zinc-50)] px-4">
       <div className="w-full max-w-sm">
         {/* Brand */}
-        <p className="text-center text-xs font-semibold tracking-[0.25em] text-[var(--color-sage-800)] mb-8">
+        <p className="text-center text-xs font-semibold tracking-[0.25em] text-[var(--color-zinc-800)] mb-8">
           {siteDisplayName}
         </p>
 
-        <div className="bg-white border border-[var(--color-sage-200)] rounded-lg p-8 shadow-sm">
-          <h1 className="text-lg font-medium text-[var(--color-sage-900)] mb-6 text-center">
+        <div className="bg-white border border-[var(--color-zinc-200)] rounded-lg p-8 shadow-sm">
+          <h1 className="text-lg font-medium text-[var(--color-zinc-900)] mb-6 text-center">
             後台登入
           </h1>
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="username"
-                className="text-xs font-medium text-[var(--color-sage-700)] tracking-wide"
+                className="text-xs font-medium text-[var(--color-zinc-700)] tracking-wide"
               >
                 帳號
               </label>
@@ -70,7 +70,7 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={submitting}
-                className="border border-[var(--color-sage-200)] rounded px-3 py-2 text-sm text-[var(--color-text-primary)] bg-white placeholder-[var(--color-sage-300)] focus:outline-none focus:border-[var(--color-sage-500)] focus:ring-1 focus:ring-[var(--color-sage-300)] transition disabled:opacity-50"
+                className="border border-[var(--color-zinc-200)] rounded px-3 py-2 text-sm text-[var(--color-text-primary)] bg-white placeholder-[var(--color-zinc-300)] focus:outline-none focus:border-[var(--color-zinc-500)] focus:ring-1 focus:ring-[var(--color-zinc-300)] transition disabled:opacity-50"
                 placeholder="請輸入帳號"
               />
             </div>
@@ -78,7 +78,7 @@ export default function LoginPage() {
             <div className="flex flex-col gap-1">
               <label
                 htmlFor="password"
-                className="text-xs font-medium text-[var(--color-sage-700)] tracking-wide"
+                className="text-xs font-medium text-[var(--color-zinc-700)] tracking-wide"
               >
                 密碼
               </label>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={submitting}
-                className="border border-[var(--color-sage-200)] rounded px-3 py-2 text-sm text-[var(--color-text-primary)] bg-white placeholder-[var(--color-sage-300)] focus:outline-none focus:border-[var(--color-sage-500)] focus:ring-1 focus:ring-[var(--color-sage-300)] transition disabled:opacity-50"
+                className="border border-[var(--color-zinc-200)] rounded px-3 py-2 text-sm text-[var(--color-text-primary)] bg-white placeholder-[var(--color-zinc-300)] focus:outline-none focus:border-[var(--color-zinc-500)] focus:ring-1 focus:ring-[var(--color-zinc-300)] transition disabled:opacity-50"
                 placeholder="請輸入密碼"
               />
             </div>
@@ -104,7 +104,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-2 bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm font-medium rounded px-4 py-2.5 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="mt-2 bg-[var(--color-zinc-700)] hover:bg-[var(--color-zinc-800)] text-white text-sm font-medium rounded px-4 py-2.5 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {submitting && (
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin inline-block" />

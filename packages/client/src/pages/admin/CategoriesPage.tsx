@@ -134,14 +134,14 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold text-[var(--color-sage-900)]">分類管理</h1>
+      <h1 className="text-xl font-semibold text-[var(--color-zinc-900)]">分類管理</h1>
 
       {/* Add form */}
-      <section className="bg-white border border-[var(--color-sage-200)] rounded-lg p-6">
-        <h2 className="text-sm font-semibold text-[var(--color-sage-800)] mb-4">新增分類</h2>
+      <section className="bg-white border border-[var(--color-zinc-200)] rounded-lg p-6">
+        <h2 className="text-sm font-semibold text-[var(--color-zinc-800)] mb-4">新增分類</h2>
         <form onSubmit={handleAdd} className="flex items-end gap-3">
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--color-sage-700)]">分類名稱</label>
+            <label className="text-xs text-[var(--color-zinc-700)]">分類名稱</label>
             <input
               type="text"
               value={newName}
@@ -149,13 +149,13 @@ export default function CategoriesPage() {
               required
               disabled={adding}
               placeholder="輸入分類名稱"
-              className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm w-52 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+              className="border border-[var(--color-zinc-200)] rounded px-3 py-1.5 text-sm w-52 focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50"
             />
           </div>
           <button
             type="submit"
             disabled={adding || !newName.trim()}
-            className="bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="bg-[var(--color-zinc-700)] hover:bg-[var(--color-zinc-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {adding && (
               <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -184,8 +184,8 @@ export default function CategoriesPage() {
         </p>
       )}
 
-      <section className="bg-white border border-[var(--color-sage-200)] rounded-lg overflow-hidden">
-        <h2 className="text-sm font-semibold text-[var(--color-sage-800)] px-6 py-4 border-b border-[var(--color-sage-100)]">
+      <section className="bg-white border border-[var(--color-zinc-200)] rounded-lg overflow-hidden">
+        <h2 className="text-sm font-semibold text-[var(--color-zinc-800)] px-6 py-4 border-b border-[var(--color-zinc-100)]">
           分類列表（{categories.length} 項）
         </h2>
 
@@ -195,7 +195,7 @@ export default function CategoriesPage() {
           </p>
         )}
 
-        <ul className="divide-y divide-[var(--color-sage-100)]">
+        <ul className="divide-y divide-[var(--color-zinc-100)]">
           {categories.map((cat, idx) => {
             const isEditing = editId === cat.id;
             const msg = rowMsg?.id === cat.id ? rowMsg : null;
@@ -210,7 +210,7 @@ export default function CategoriesPage() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       disabled={editSaving}
-                      className="border border-[var(--color-sage-300)] rounded px-2 py-1 text-sm w-48 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+                      className="border border-[var(--color-zinc-300)] rounded px-2 py-1 text-sm w-48 focus:outline-none focus:border-[var(--color-zinc-500)] disabled:opacity-50"
                       autoFocus
                     />
                   ) : (
@@ -234,14 +234,14 @@ export default function CategoriesPage() {
                       <button
                         onClick={() => saveEdit(cat)}
                         disabled={editSaving || !editName.trim()}
-                        className="text-xs bg-[var(--color-sage-700)] text-white rounded px-2.5 py-1 hover:bg-[var(--color-sage-800)] transition-colors disabled:opacity-50"
+                        className="text-xs bg-[var(--color-zinc-700)] text-white rounded px-2.5 py-1 hover:bg-[var(--color-zinc-800)] transition-colors disabled:opacity-50"
                       >
                         儲存
                       </button>
                       <button
                         onClick={() => setEditId(null)}
                         disabled={editSaving}
-                        className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-sage-700)] transition-colors"
+                        className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-zinc-700)] transition-colors"
                       >
                         取消
                       </button>
@@ -249,7 +249,7 @@ export default function CategoriesPage() {
                   ) : (
                     <button
                       onClick={() => startEdit(cat)}
-                      className="text-xs text-[var(--color-sage-700)] hover:text-[var(--color-sage-900)] transition-colors"
+                      className="text-xs text-[var(--color-zinc-700)] hover:text-[var(--color-zinc-900)] transition-colors"
                     >
                       編輯
                     </button>
@@ -266,7 +266,7 @@ export default function CategoriesPage() {
                     <button
                       onClick={() => move(idx, 'up')}
                       disabled={idx === 0}
-                      className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                      className="text-[10px] text-[var(--color-zinc-600)] hover:text-[var(--color-zinc-900)] disabled:opacity-30 transition-colors leading-none px-1"
                       title="上移"
                     >
                       ▲
@@ -274,7 +274,7 @@ export default function CategoriesPage() {
                     <button
                       onClick={() => move(idx, 'down')}
                       disabled={idx === categories.length - 1}
-                      className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                      className="text-[10px] text-[var(--color-zinc-600)] hover:text-[var(--color-zinc-900)] disabled:opacity-30 transition-colors leading-none px-1"
                       title="下移"
                     >
                       ▼

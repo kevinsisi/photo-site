@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Category } from '../../api';
+import { useUploadManager } from '../../contexts/UploadManagerContext';
 
 interface AdminPhoto {
   id: number;
@@ -8,11 +9,14 @@ interface AdminPhoto {
   filename: string;
   published: boolean;
   sortOrder: number;
+  width: number | null;
+  height: number | null;
   thumbUrl: string;
   mediumUrl: string;
 }
 
-const PHOTO_PREFIX = '/photos/';
+const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const NEW_CATEGORY_VALUE = '__new__';
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -38,27 +42,186 @@ interface EditState {
   categoryId: number;
 }
 
-const NEW_CATEGORY_VALUE = '__new__';
+/** Drag & drop + multi-select intake; resolves category then hands files to the queue */
+function UploadDropzone({
+  categories,
+  categoriesLoaded,
+  onCategoryCreated,
+}: {
+  categories: Category[];
+  categoriesLoaded: boolean;
+  onCategoryCreated: (category: Category) => void;
+}) {
+  const { enqueue } = useUploadManager();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (categoriesLoaded && categories.length > 0 && categoryId === '') {
+      setCategoryId(categories[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesLoaded]);
+
+  async function resolveCategoryId(): Promise<number | null> {
+    if (categoryId !== '') return categoryId;
+    const name = newCategoryName.trim();
+    if (!name) {
+      setMessage({ type: 'err', text: '請選擇或新增分類' });
+      return null;
+    }
+    const existing = categories.find((c) => c.name === name);
+    if (existing) {
+      setCategoryId(existing.id);
+      return existing.id;
+    }
+    const { id } = await adminFetch<{ id: number }>('/api/admin/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const maxOrder = categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
+    onCategoryCreated({ id, name, sortOrder: maxOrder + 1 });
+    setCategoryId(id);
+    setNewCategoryName('');
+    return id;
+  }
+
+  async function handleFiles(fileList: FileList | File[]) {
+    const all = Array.from(fileList);
+    const valid = all.filter((f) => ALLOWED_TYPES.has(f.type));
+    const rejected = all.length - valid.length;
+
+    if (valid.length === 0) {
+      setMessage({ type: 'err', text: '沒有可上傳的檔案（僅接受 JPEG / PNG / WebP）' });
+      return;
+    }
+
+    try {
+      const catId = await resolveCategoryId();
+      if (catId === null) return;
+      enqueue(valid, catId);
+      setMessage({
+        type: 'ok',
+        text:
+          rejected > 0
+            ? `${valid.length} 個檔案已加入佇列，${rejected} 個非影像檔已略過`
+            : `${valid.length} 個檔案已加入上傳佇列`,
+      });
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err) {
+      setMessage({ type: 'err', text: err instanceof Error ? err.message : '加入佇列失敗' });
+    }
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  return (
+    <section className="bg-white border border-zinc-200 rounded-lg p-6">
+      <h2 className="text-sm font-semibold text-zinc-800 mb-4">上傳照片</h2>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap mb-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-zinc-500">分類</label>
+          <select
+            value={categoryId === '' ? NEW_CATEGORY_VALUE : categoryId}
+            onChange={(e) => {
+              const value = e.target.value;
+              setCategoryId(value === NEW_CATEGORY_VALUE ? '' : Number(value));
+            }}
+            disabled={!categoriesLoaded}
+            className="border border-zinc-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+          >
+            {!categoriesLoaded && <option>分類載入中...</option>}
+            <option value={NEW_CATEGORY_VALUE}>＋ 新增分類</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {categoryId === '' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-zinc-500">新分類名稱</label>
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              disabled={!categoriesLoaded}
+              placeholder="例如：婚禮紀錄"
+              className="border border-zinc-200 rounded px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Dropzone */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          void handleFiles(e.dataTransfer.files);
+        }}
+        onClick={() => fileRef.current?.click()}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
+          dragOver
+            ? 'border-zinc-500 bg-zinc-50'
+            : 'border-zinc-300 hover:border-zinc-400 hover:bg-zinc-50/50'
+        }`}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-8 w-8 text-zinc-400">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+        </svg>
+        <p className="text-sm text-zinc-600">拖放多張照片到這裡，或點擊選擇檔案</p>
+        <p className="text-xs text-zinc-400">
+          JPEG / PNG / WebP・加入佇列後在背景上傳，可繼續其他操作
+        </p>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              void handleFiles(e.target.files);
+            }
+          }}
+        />
+      </div>
+
+      {message && (
+        <p
+          className={`mt-3 text-sm px-3 py-2 rounded ${
+            message.type === 'ok'
+              ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+              : 'text-red-600 bg-red-50 border border-red-200'
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
+    </section>
+  );
+}
 
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<AdminPhoto[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const { completedCount } = useUploadManager();
 
-  // Upload form state
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadCategoryId, setUploadCategoryId] = useState<number | ''>('');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [uploadTitle, setUploadTitle] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
-
-  // Per-row operation feedback
   const [opMsg, setOpMsg] = useState<{ id: number; type: 'ok' | 'err'; text: string } | null>(null);
-
-  // Inline edit state
   const [editState, setEditState] = useState<EditState | null>(null);
   const [editSaving, setEditSaving] = useState(false);
 
@@ -70,72 +233,24 @@ export default function PhotosPage() {
       .then(([p, c]) => {
         setPhotos(p);
         setCategories(c);
-        if (c.length > 0) setUploadCategoryId(c[0].id);
       })
       .catch((err) => setLoadError(err.message))
       .finally(() => setCategoriesLoaded(true));
   }, []);
 
+  // Refresh the list whenever a background upload finishes
+  useEffect(() => {
+    if (completedCount === 0) return;
+    adminFetch<AdminPhoto[]>('/api/admin/photos')
+      .then(setPhotos)
+      .catch(() => {
+        // panel already shows upload state; list refresh failure is non-fatal
+      });
+  }, [completedCount]);
+
   function showOpMsg(id: number, type: 'ok' | 'err', text: string) {
     setOpMsg({ id, type, text });
     if (type === 'ok') setTimeout(() => setOpMsg(null), 2500);
-  }
-
-  async function handleUpload(e: React.FormEvent) {
-    e.preventDefault();
-    if (!uploadFile) return;
-    setUploading(true);
-    setUploadMsg(null);
-    try {
-      let categoryId = uploadCategoryId;
-      if (categoryId === '') {
-        const categoryName = newCategoryName.trim();
-        if (!categoryName) {
-          setUploadMsg({ type: 'err', text: '請選擇或新增分類' });
-          return;
-        }
-
-        const existingCategory = categories.find((category) => category.name === categoryName);
-        if (existingCategory) {
-          categoryId = existingCategory.id;
-        } else {
-          const { id } = await adminFetch<{ id: number }>('/api/admin/categories', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: categoryName }),
-          });
-          const maxOrder = categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
-          const createdCategory = { id, name: categoryName, sortOrder: maxOrder + 1 };
-          setCategories((prev) => [...prev, createdCategory]);
-          categoryId = id;
-        }
-      }
-
-      const fd = new FormData();
-      fd.append('file', uploadFile);
-      fd.append('categoryId', String(categoryId));
-      fd.append('title', uploadTitle);
-      await adminFetch<{ id: number }>('/api/admin/photos', {
-        method: 'POST',
-        body: fd,
-        // No Content-Type header — browser sets multipart boundary automatically
-        headers: undefined,
-      });
-      // Re-fetch full list to get the new photo with all computed fields
-      const updated = await adminFetch<AdminPhoto[]>('/api/admin/photos');
-      setPhotos(updated);
-      setUploadFile(null);
-      setUploadTitle('');
-      setUploadCategoryId(categoryId);
-      setNewCategoryName('');
-      if (fileRef.current) fileRef.current.value = '';
-      setUploadMsg({ type: 'ok', text: '上傳成功' });
-      setTimeout(() => setUploadMsg(null), 2500);
-    } catch (err) {
-      setUploadMsg({ type: 'err', text: err instanceof Error ? err.message : '上傳失敗' });
-    } finally {
-      setUploading(false);
-    }
   }
 
   async function handleTogglePublished(photo: AdminPhoto) {
@@ -170,10 +285,6 @@ export default function PhotosPage() {
     } catch (err) {
       showOpMsg(photo.id, 'err', err instanceof Error ? err.message : '刪除失敗');
     }
-  }
-
-  function startEdit(photo: AdminPhoto) {
-    setEditState({ id: photo.id, title: photo.title, categoryId: photo.categoryId });
   }
 
   async function saveEdit() {
@@ -213,7 +324,7 @@ export default function PhotosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: next.map((p) => p.id) }),
       });
-    } catch (err) {
+    } catch {
       // Revert on failure
       const reverted = [...next];
       [reverted[index], reverted[swapWith]] = [reverted[swapWith], reverted[index]];
@@ -223,239 +334,69 @@ export default function PhotosPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-xl font-semibold text-[var(--color-sage-900)]">作品管理</h1>
+      <h1 className="text-xl font-semibold text-zinc-900">作品管理</h1>
 
-      {/* Upload form */}
-      <section className="bg-white border border-[var(--color-sage-200)] rounded-lg p-6">
-        <h2 className="text-sm font-semibold text-[var(--color-sage-800)] mb-4">上傳新照片</h2>
-        <form onSubmit={handleUpload} className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--color-sage-700)]">檔案</label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              required
-              disabled={uploading}
-              onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-              className="text-sm text-[var(--color-text-primary)] file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-[var(--color-sage-100)] file:text-[var(--color-sage-800)] file:cursor-pointer disabled:opacity-50"
-            />
-          </div>
+      <UploadDropzone
+        categories={categories}
+        categoriesLoaded={categoriesLoaded}
+        onCategoryCreated={(cat) => setCategories((prev) => [...prev, cat])}
+      />
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--color-sage-700)]">標題</label>
-            <input
-              type="text"
-              value={uploadTitle}
-              onChange={(e) => setUploadTitle(e.target.value)}
-              disabled={uploading}
-              placeholder="（可選）"
-              className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-[var(--color-sage-700)]">分類</label>
-            <select
-              value={uploadCategoryId === '' ? NEW_CATEGORY_VALUE : uploadCategoryId}
-              onChange={(e) => {
-                const value = e.target.value;
-                setUploadCategoryId(value === NEW_CATEGORY_VALUE ? '' : Number(value));
-              }}
-              required
-              disabled={uploading || !categoriesLoaded}
-              className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
-            >
-              {!categoriesLoaded && <option>分類載入中...</option>}
-              <option value={NEW_CATEGORY_VALUE}>＋ 新增分類</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {uploadCategoryId === '' && (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-[var(--color-sage-700)]">新分類名稱</label>
-              <input
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                disabled={uploading || !categoriesLoaded}
-                placeholder="例如：婚禮紀錄"
-                className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
-              />
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={
-              uploading ||
-              !categoriesLoaded ||
-              !uploadFile ||
-              (uploadCategoryId === '' && !newCategoryName.trim())
-            }
-            className="bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {uploading && (
-              <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            )}
-            {uploading ? '上傳中...' : '上傳'}
-          </button>
-        </form>
-
-        {uploadMsg && (
-          <p
-            className={`mt-3 text-sm px-3 py-2 rounded ${
-              uploadMsg.type === 'ok'
-                ? 'text-green-700 bg-green-50 border border-green-200'
-                : 'text-red-600 bg-red-50 border border-red-200'
-            }`}
-          >
-            {uploadMsg.text}
-          </p>
-        )}
-      </section>
-
-      {/* Photo list */}
       {loadError && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
           {loadError}
         </p>
       )}
 
-      <section className="bg-white border border-[var(--color-sage-200)] rounded-lg overflow-hidden">
-        <h2 className="text-sm font-semibold text-[var(--color-sage-800)] px-6 py-4 border-b border-[var(--color-sage-100)]">
+      {/* Photo card grid */}
+      <section>
+        <h2 className="text-sm font-semibold text-zinc-800 mb-4">
           照片列表（{photos.length} 張）
         </h2>
 
         {photos.length === 0 && !loadError && (
-          <p className="text-sm text-[var(--color-text-secondary)] px-6 py-8 text-center">
-            尚無照片
+          <p className="rounded-lg border border-zinc-200 bg-white px-6 py-12 text-center text-sm text-zinc-500">
+            尚無照片，從上方拖放幾張開始吧
           </p>
         )}
 
-        <ul className="divide-y divide-[var(--color-sage-100)]">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((photo, idx) => {
             const isEditing = editState?.id === photo.id;
             const msg = opMsg?.id === photo.id ? opMsg : null;
 
             return (
-              <li key={photo.id} className="flex items-start gap-4 px-6 py-4">
+              <div
+                key={photo.id}
+                className="group overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+              >
                 {/* Thumbnail */}
-                <img
-                  src={photo.thumbUrl.startsWith('/photos/') ? photo.thumbUrl : `${PHOTO_PREFIX}${photo.thumbUrl}`}
-                  alt={photo.title || photo.filename}
-                  className="w-16 h-16 object-cover rounded border border-[var(--color-sage-200)] shrink-0"
-                />
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  {isEditing ? (
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
-                      <input
-                        type="text"
-                        value={editState.title}
-                        onChange={(e) =>
-                          setEditState((s) => s && { ...s, title: e.target.value })
-                        }
-                        disabled={editSaving}
-                        className="border border-[var(--color-sage-300)] rounded px-2 py-1 text-sm w-44 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
-                      />
-                      <select
-                        value={editState.categoryId}
-                        onChange={(e) =>
-                          setEditState((s) => s && { ...s, categoryId: Number(e.target.value) })
-                        }
-                        disabled={editSaving}
-                        className="border border-[var(--color-sage-300)] rounded px-2 py-1 text-sm focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
-                      >
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={saveEdit}
-                        disabled={editSaving}
-                        className="text-xs bg-[var(--color-sage-700)] text-white rounded px-2.5 py-1 hover:bg-[var(--color-sage-800)] transition-colors disabled:opacity-50"
-                      >
-                        儲存
-                      </button>
-                      <button
-                        onClick={() => setEditState(null)}
-                        disabled={editSaving}
-                        className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-sage-700)] transition-colors"
-                      >
-                        取消
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                      {photo.title || photo.filename}
-                    </p>
-                  )}
-
-                  {!isEditing && (
-                    <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-                      {categoryName(categories, photo.categoryId)}
-                    </p>
-                  )}
-
-                  {msg && (
-                    <p
-                      className={`text-xs mt-1 ${
-                        msg.type === 'ok' ? 'text-green-600' : 'text-red-500'
-                      }`}
-                    >
-                      {msg.text}
-                    </p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                  {/* Published toggle */}
+                <div className="relative aspect-[4/3] bg-zinc-100">
+                  <img
+                    src={photo.thumbUrl}
+                    alt={photo.title || photo.filename}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                  {/* Publish state badge */}
                   <button
                     onClick={() => handleTogglePublished(photo)}
                     title={photo.published ? '點擊下架' : '點擊上架'}
-                    className={`text-xs rounded px-2.5 py-1 transition-colors ${
+                    className={`absolute left-2 top-2 rounded-full px-2.5 py-1 text-[11px] font-medium shadow-sm transition-colors ${
                       photo.published
-                        ? 'bg-[var(--color-sage-100)] text-[var(--color-sage-800)] hover:bg-[var(--color-sage-200)]'
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'bg-white/90 text-zinc-500 hover:bg-white'
                     }`}
                   >
-                    {photo.published ? '已上架' : '未上架'}
+                    {photo.published ? '已上架' : '草稿'}
                   </button>
 
-                  {/* Edit */}
-                  {!isEditing && (
-                    <button
-                      onClick={() => startEdit(photo)}
-                      className="text-xs text-[var(--color-sage-700)] hover:text-[var(--color-sage-900)] transition-colors"
-                    >
-                      編輯
-                    </button>
-                  )}
-
-                  {/* Delete */}
-                  <button
-                    onClick={() => handleDelete(photo)}
-                    className="text-xs text-red-500 hover:text-red-700 transition-colors"
-                  >
-                    刪除
-                  </button>
-
-                  {/* Order buttons */}
-                  <div className="flex flex-col gap-0.5">
+                  {/* Order controls */}
+                  <div className="absolute right-2 top-2 flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
                       onClick={() => movePhoto(idx, 'up')}
                       disabled={idx === 0}
-                      className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                      className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-xs text-zinc-600 shadow-sm hover:bg-white disabled:opacity-30"
                       title="上移"
                     >
                       ▲
@@ -463,17 +404,104 @@ export default function PhotosPage() {
                     <button
                       onClick={() => movePhoto(idx, 'down')}
                       disabled={idx === photos.length - 1}
-                      className="text-[10px] text-[var(--color-sage-600)] hover:text-[var(--color-sage-900)] disabled:opacity-30 transition-colors leading-none px-1"
+                      className="flex h-6 w-6 items-center justify-center rounded bg-white/90 text-xs text-zinc-600 shadow-sm hover:bg-white disabled:opacity-30"
                       title="下移"
                     >
                       ▼
                     </button>
                   </div>
                 </div>
-              </li>
+
+                {/* Card body */}
+                <div className="p-3">
+                  {isEditing ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        value={editState.title}
+                        placeholder="標題"
+                        onChange={(e) =>
+                          setEditState((s) => s && { ...s, title: e.target.value })
+                        }
+                        disabled={editSaving}
+                        className="w-full rounded border border-zinc-300 px-2 py-1 text-sm focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+                      />
+                      <select
+                        value={editState.categoryId}
+                        onChange={(e) =>
+                          setEditState((s) => s && { ...s, categoryId: Number(e.target.value) })
+                        }
+                        disabled={editSaving}
+                        className="w-full rounded border border-zinc-300 px-2 py-1 text-sm focus:border-zinc-500 focus:outline-none disabled:opacity-50"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={saveEdit}
+                          disabled={editSaving}
+                          className="rounded bg-zinc-800 px-2.5 py-1 text-xs text-white transition-colors hover:bg-zinc-900 disabled:opacity-50"
+                        >
+                          儲存
+                        </button>
+                        <button
+                          onClick={() => setEditState(null)}
+                          disabled={editSaving}
+                          className="text-xs text-zinc-500 transition-colors hover:text-zinc-800"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="truncate text-sm font-medium text-zinc-800">
+                        {photo.title || <span className="text-zinc-400">（未命名）</span>}
+                      </p>
+                      <p className="mt-0.5 text-xs text-zinc-500">
+                        {categoryName(categories, photo.categoryId)}
+                      </p>
+                      <div className="mt-2 flex items-center gap-3">
+                        <button
+                          onClick={() =>
+                            setEditState({
+                              id: photo.id,
+                              title: photo.title,
+                              categoryId: photo.categoryId,
+                            })
+                          }
+                          className="text-xs text-zinc-600 transition-colors hover:text-zinc-900"
+                        >
+                          編輯
+                        </button>
+                        <button
+                          onClick={() => handleDelete(photo)}
+                          className="text-xs text-red-500 transition-colors hover:text-red-700"
+                        >
+                          刪除
+                        </button>
+                      </div>
+                    </>
+                  )}
+
+                  {msg && (
+                    <p
+                      className={`mt-1.5 text-xs ${
+                        msg.type === 'ok' ? 'text-emerald-600' : 'text-red-500'
+                      }`}
+                    >
+                      {msg.text}
+                    </p>
+                  )}
+                </div>
+              </div>
             );
           })}
-        </ul>
+        </div>
       </section>
     </div>
   );
