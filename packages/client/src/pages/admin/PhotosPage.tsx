@@ -38,15 +38,19 @@ interface EditState {
   categoryId: number;
 }
 
+const NEW_CATEGORY_VALUE = '__new__';
+
 export default function PhotosPage() {
   const [photos, setPhotos] = useState<AdminPhoto[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
 
   // Upload form state
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadCategoryId, setUploadCategoryId] = useState<number | ''>('');
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -68,7 +72,8 @@ export default function PhotosPage() {
         setCategories(c);
         if (c.length > 0) setUploadCategoryId(c[0].id);
       })
-      .catch((err) => setLoadError(err.message));
+      .catch((err) => setLoadError(err.message))
+      .finally(() => setCategoriesLoaded(true));
   }, []);
 
   function showOpMsg(id: number, type: 'ok' | 'err', text: string) {
@@ -78,13 +83,37 @@ export default function PhotosPage() {
 
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
-    if (!uploadFile || uploadCategoryId === '') return;
+    if (!uploadFile) return;
     setUploading(true);
     setUploadMsg(null);
     try {
+      let categoryId = uploadCategoryId;
+      if (categoryId === '') {
+        const categoryName = newCategoryName.trim();
+        if (!categoryName) {
+          setUploadMsg({ type: 'err', text: '請選擇或新增分類' });
+          return;
+        }
+
+        const existingCategory = categories.find((category) => category.name === categoryName);
+        if (existingCategory) {
+          categoryId = existingCategory.id;
+        } else {
+          const { id } = await adminFetch<{ id: number }>('/api/admin/categories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: categoryName }),
+          });
+          const maxOrder = categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
+          const createdCategory = { id, name: categoryName, sortOrder: maxOrder + 1 };
+          setCategories((prev) => [...prev, createdCategory]);
+          categoryId = id;
+        }
+      }
+
       const fd = new FormData();
       fd.append('file', uploadFile);
-      fd.append('categoryId', String(uploadCategoryId));
+      fd.append('categoryId', String(categoryId));
       fd.append('title', uploadTitle);
       await adminFetch<{ id: number }>('/api/admin/photos', {
         method: 'POST',
@@ -97,6 +126,8 @@ export default function PhotosPage() {
       setPhotos(updated);
       setUploadFile(null);
       setUploadTitle('');
+      setUploadCategoryId(categoryId);
+      setNewCategoryName('');
       if (fileRef.current) fileRef.current.value = '';
       setUploadMsg({ type: 'ok', text: '上傳成功' });
       setTimeout(() => setUploadMsg(null), 2500);
@@ -226,12 +257,17 @@ export default function PhotosPage() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-[var(--color-sage-700)]">分類</label>
             <select
-              value={uploadCategoryId}
-              onChange={(e) => setUploadCategoryId(Number(e.target.value))}
+              value={uploadCategoryId === '' ? NEW_CATEGORY_VALUE : uploadCategoryId}
+              onChange={(e) => {
+                const value = e.target.value;
+                setUploadCategoryId(value === NEW_CATEGORY_VALUE ? '' : Number(value));
+              }}
               required
-              disabled={uploading}
+              disabled={uploading || !categoriesLoaded}
               className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
             >
+              {!categoriesLoaded && <option>分類載入中...</option>}
+              <option value={NEW_CATEGORY_VALUE}>＋ 新增分類</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -240,9 +276,28 @@ export default function PhotosPage() {
             </select>
           </div>
 
+          {uploadCategoryId === '' && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-[var(--color-sage-700)]">新分類名稱</label>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                disabled={uploading || !categoriesLoaded}
+                placeholder="例如：婚禮紀錄"
+                className="border border-[var(--color-sage-200)] rounded px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-[var(--color-sage-500)] disabled:opacity-50"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={uploading || !uploadFile}
+            disabled={
+              uploading ||
+              !categoriesLoaded ||
+              !uploadFile ||
+              (uploadCategoryId === '' && !newCategoryName.trim())
+            }
             className="bg-[var(--color-sage-700)] hover:bg-[var(--color-sage-800)] text-white text-sm rounded px-4 py-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {uploading && (
@@ -292,7 +347,7 @@ export default function PhotosPage() {
               <li key={photo.id} className="flex items-start gap-4 px-6 py-4">
                 {/* Thumbnail */}
                 <img
-                  src={`${PHOTO_PREFIX}${photo.thumbUrl}`}
+                  src={photo.thumbUrl.startsWith('/photos/') ? photo.thumbUrl : `${PHOTO_PREFIX}${photo.thumbUrl}`}
                   alt={photo.title || photo.filename}
                   className="w-16 h-16 object-cover rounded border border-[var(--color-sage-200)] shrink-0"
                 />
