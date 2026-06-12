@@ -5,6 +5,33 @@ import { requireAuth } from '../middleware/requireAuth.js';
 export const adminPlansRouter = Router();
 adminPlansRouter.use(requireAuth);
 
+// GET /api/admin/plans
+adminPlansRouter.get('/', (_req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT id, name, description, items, price, published, sort_order AS sortOrder
+       FROM plans
+       ORDER BY sort_order ASC`
+    )
+    .all() as {
+      id: number;
+      name: string;
+      description: string;
+      items: string;
+      price: number;
+      published: number;
+      sortOrder: number;
+    }[];
+
+  res.json(
+    rows.map((row) => ({
+      ...row,
+      items: JSON.parse(row.items) as string[],
+      published: row.published === 1,
+    }))
+  );
+});
+
 // POST /api/admin/plans
 adminPlansRouter.post('/', (req, res) => {
   const { name, description, items, price, published } = req.body as {

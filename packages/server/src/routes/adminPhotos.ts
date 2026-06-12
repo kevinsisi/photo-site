@@ -58,6 +58,35 @@ function deletePhotoFiles(filename: string): void {
   }
 }
 
+// GET /api/admin/photos
+adminPhotosRouter.get('/', (_req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT id, category_id AS categoryId, title, filename, published, sort_order AS sortOrder,
+              'thumb/' || filename AS thumbUrl,
+              'medium/' || filename AS mediumUrl
+       FROM photos
+       ORDER BY sort_order ASC`
+    )
+    .all() as {
+      id: number;
+      categoryId: number;
+      title: string;
+      filename: string;
+      published: number;
+      sortOrder: number;
+      thumbUrl: string;
+      mediumUrl: string;
+    }[];
+
+  res.json(
+    rows.map((row) => ({
+      ...row,
+      published: row.published === 1,
+    }))
+  );
+});
+
 // POST /api/admin/photos  (multipart: file, categoryId, title)
 adminPhotosRouter.post('/', upload.single('file'), async (req, res) => {
   if (!req.file) {
