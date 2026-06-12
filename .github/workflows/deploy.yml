@@ -1,43 +1,28 @@
 name: Deploy to amd64 Desktop
 
 on:
-  workflow_run:
-    workflows: ["Build and Push Docker Image"]
-    types:
-      - completed
+  push:
     branches:
       - main
+    paths:
+      - 'packages/**'
+      - 'Dockerfile'
+      - 'deploy/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.base.json'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Exact image tag to deploy'
-        required: true
-        type: string
 
 env:
-  DOCKERHUB_USERNAME: kevin950805
-  IMAGE_NAME: photo-site
-  HOST_PORT: 6423
   DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'kevin' }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
-
-      - name: Resolve image tag
-        id: resolve-image
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            echo "image_tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
@@ -53,33 +38,45 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.DEPLOY_SERVER_IP }}" >> ~/.ssh/known_hosts
 
-      - name: Sync deployment files
+      - name: Sync source and proxy files
         env:
           DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SOURCE_PATH: /home/kevin/DockerCompose/photo-site/source
           PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
-          IMAGE_TAG: ${{ steps.resolve-image.outputs.image_tag }}
         run: |
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "mkdir -p '${DEPLOY_PATH}' '${PROXY_DEPLOY_PATH}' /srv/data4tb/photo-site/data"
-          scp -i ~/.ssh/deploy_key deploy/docker-compose.prod.yml "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${DEPLOY_PATH}/docker-compose.yml"
-          scp -i ~/.ssh/deploy_key deploy/proxy/docker-compose.yml "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/docker-compose.yml"
-          scp -i ~/.ssh/deploy_key deploy/proxy/nginx.conf "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/nginx.conf"
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "test -f '${DEPLOY_PATH}/.env' || touch '${DEPLOY_PATH}/.env'"
-          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "grep -v '^IMAGE_TAG=' '${DEPLOY_PATH}/.env' > '${DEPLOY_PATH}/.env.tmp' || true; printf 'IMAGE_TAG=%s\n' '${IMAGE_TAG}' >> '${DEPLOY_PATH}/.env.tmp'; mv '${DEPLOY_PATH}/.env.tmp' '${DEPLOY_PATH}/.env'"
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude='packages/*/node_modules' \
+            --exclude='packages/*/dist' \
+            --exclude=data \
+            --exclude='.env*' \
+            -czf /tmp/photo-site-source.tgz .
 
-      - name: Deploy app and proxy
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" \
+            "mkdir -p '${SOURCE_PATH}' '${PROXY_DEPLOY_PATH}' /srv/data4tb/photo-site/data"
+          scp -i ~/.ssh/deploy_key /tmp/photo-site-source.tgz \
+            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:/home/kevin/DockerCompose/photo-site/photo-site-source.tgz"
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" \
+            "cd '${SOURCE_PATH}' && tar -xzf ../photo-site-source.tgz"
+
+          scp -i ~/.ssh/deploy_key deploy/proxy/docker-compose.yml \
+            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/docker-compose.yml"
+          scp -i ~/.ssh/deploy_key deploy/proxy/nginx.conf \
+            "${DEPLOY_USER}@${DEPLOY_SERVER_IP}:${PROXY_DEPLOY_PATH}/nginx.conf"
+
+      - name: Deploy app and proxy on amd64
         env:
           DEPLOY_SERVER_IP: ${{ secrets.DEPLOY_SERVER_IP }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SOURCE_DEPLOY_PATH: /home/kevin/DockerCompose/photo-site/source/deploy
           PROXY_DEPLOY_PATH: ${{ secrets.PROXY_DEPLOY_PATH }}
         run: |
           ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${DEPLOY_SERVER_IP}" "
             set -e
-            cd '${DEPLOY_PATH}'
-            docker compose pull
-            docker compose up -d --force-recreate
+            cd '${SOURCE_DEPLOY_PATH}'
+            docker compose up -d --build --force-recreate
             cd '${PROXY_DEPLOY_PATH}'
-            docker compose up -d
+            docker compose up -d --force-recreate
             docker image prune -af --filter 'until=24h' || true
           "
 
@@ -93,7 +90,7 @@ jobs:
           done
 
           ssh -i ~/.ssh/deploy_key "${{ env.DEPLOY_USER }}@${{ secrets.DEPLOY_SERVER_IP }}" \
-            "cd '${{ secrets.DEPLOY_PATH }}' && docker compose ps && docker logs photo-site --tail 80" || true
+            "cd /home/kevin/DockerCompose/photo-site/source/deploy && docker compose ps && docker logs photo-site --tail 80" || true
           exit 1
 
       - name: Admin session check
