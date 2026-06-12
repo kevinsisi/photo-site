@@ -16,7 +16,6 @@ interface AdminPhoto {
 }
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const NEW_CATEGORY_VALUE = '__new__';
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -54,20 +53,37 @@ function UploadDropzone({
 }) {
   const { enqueue } = useUploadManager();
   const fileRef = useRef<HTMLInputElement>(null);
+  const categoryMenuRef = useRef<HTMLDivElement>(null);
   const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
-    if (categoriesLoaded && categories.length > 0 && categoryId === '') {
+    if (!categoriesLoaded) return;
+    if (categories.length > 0 && categoryId === '' && !creatingCategory) {
       setCategoryId(categories[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoriesLoaded]);
+    if (categories.length === 0) {
+      setCreatingCategory(true);
+    }
+  }, [categoriesLoaded, categories, categoryId, creatingCategory]);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      if (!categoryMenuRef.current?.contains(event.target as Node)) {
+        setCategoryMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
   async function resolveCategoryId(): Promise<number | null> {
-    if (categoryId !== '') return categoryId;
+    if (!creatingCategory && categoryId !== '') return categoryId;
     const name = newCategoryName.trim();
     if (!name) {
       setMessage({ type: 'err', text: '請選擇或新增分類' });
@@ -76,6 +92,7 @@ function UploadDropzone({
     const existing = categories.find((c) => c.name === name);
     if (existing) {
       setCategoryId(existing.id);
+      setCreatingCategory(false);
       return existing.id;
     }
     const { id } = await adminFetch<{ id: number }>('/api/admin/categories', {
@@ -86,6 +103,8 @@ function UploadDropzone({
     const maxOrder = categories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
     onCategoryCreated({ id, name, sortOrder: maxOrder + 1 });
     setCategoryId(id);
+    setCreatingCategory(false);
+    setCategoryMenuOpen(false);
     setNewCategoryName('');
     return id;
   }
@@ -125,26 +144,57 @@ function UploadDropzone({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap mb-4">
         <div className="flex flex-col gap-1">
           <label className="text-xs text-zinc-500">分類</label>
-          <select
-            value={categoryId === '' ? NEW_CATEGORY_VALUE : categoryId}
-            onChange={(e) => {
-              const value = e.target.value;
-              setCategoryId(value === NEW_CATEGORY_VALUE ? '' : Number(value));
-            }}
-            disabled={!categoriesLoaded}
-            className="border border-zinc-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-zinc-500 disabled:opacity-50"
-          >
-            {!categoriesLoaded && <option>分類載入中...</option>}
-            <option value={NEW_CATEGORY_VALUE}>＋ 新增分類</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <div ref={categoryMenuRef} className="relative w-full sm:w-56">
+            <button
+              type="button"
+              disabled={!categoriesLoaded}
+              onClick={() => setCategoryMenuOpen((open) => !open)}
+              className="flex w-full items-center justify-between rounded border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-800 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+            >
+              <span>
+                {!categoriesLoaded
+                  ? '分類載入中...'
+                  : creatingCategory
+                  ? '新增分類'
+                  : categoryName(categories, categoryId as number)}
+              </span>
+              <span aria-hidden="true" className="text-zinc-500">⌄</span>
+            </button>
+
+            {categoryMenuOpen && categoriesLoaded && (
+              <div className="absolute z-30 mt-1 w-full overflow-hidden rounded border border-zinc-200 bg-white shadow-lg">
+                {categories.map((category) => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => {
+                      setCategoryId(category.id);
+                      setCreatingCategory(false);
+                      setNewCategoryName('');
+                      setCategoryMenuOpen(false);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50"
+                  >
+                    {category.name}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoryId('');
+                    setCreatingCategory(true);
+                    setCategoryMenuOpen(false);
+                  }}
+                  className="block w-full border-t border-zinc-100 px-3 py-2 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                  ＋ 新增分類
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {categoryId === '' && (
+        {creatingCategory && (
           <div className="flex flex-col gap-1">
             <label className="text-xs text-zinc-500">新分類名稱</label>
             <input
@@ -159,7 +209,6 @@ function UploadDropzone({
         )}
       </div>
 
-      {/* Dropzone */}
       <div
         onDragOver={(e) => {
           e.preventDefault();
