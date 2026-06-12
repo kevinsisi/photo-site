@@ -28,3 +28,14 @@
   --color-sage-800: var(--color-sage-800);
   --color-sage-900: var(--color-sage-900);
 }
+
+/* Base typography */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent horizontal overflow globally */
+body {
+  overflow-x: hidden;
+}

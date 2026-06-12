@@ -1,17 +1,19 @@
 import { Routes, Route } from 'react-router-dom';
-
-function Home() {
-  return (
-    <div className="min-h-screen bg-white text-[var(--color-text-primary)]">
-      <h1 className="text-2xl font-semibold text-sage-700">Photo Site</h1>
-    </div>
-  );
-}
+import Layout from './components/Layout';
+import HomePage from './pages/HomePage';
+import WorksPage from './pages/WorksPage';
+import PricingPage from './pages/PricingPage';
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/works" element={<WorksPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        {/* Catch-all: redirect unknown routes back to home */}
+        <Route path="*" element={<HomePage />} />
+      </Route>
     </Routes>
   );
 }
