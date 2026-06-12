@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --color-sage-50: #f4f6f1;
+  --color-sage-100: #e8edd4;
+  --color-sage-200: #d1dbb3;
+  --color-sage-300: #b4c48d;
+  --color-sage-400: #98ad6b;
+  --color-sage-500: #8a9a7b;
+  --color-sage-600: #7a8a6b;
+  --color-sage-700: #657357;
+  --color-sage-800: #4e5842;
+  --color-sage-900: #3a4231;
+  --color-text-primary: #2a2a2a;
+  --color-text-secondary: #6b7280;
+  --color-bg: #ffffff;
+}
+
+@theme {
+  --color-sage-50: var(--color-sage-50);
+  --color-sage-100: var(--color-sage-100);
+  --color-sage-200: var(--color-sage-200);
+  --color-sage-300: var(--color-sage-300);
+  --color-sage-400: var(--color-sage-400);
+  --color-sage-500: var(--color-sage-500);
+  --color-sage-600: var(--color-sage-600);
+  --color-sage-700: var(--color-sage-700);
+  --color-sage-800: var(--color-sage-800);
+  --color-sage-900: var(--color-sage-900);
+}

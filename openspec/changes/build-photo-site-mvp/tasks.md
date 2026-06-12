@@ -2,10 +2,10 @@
 
 ## 1. Monorepo 與基礎建設
 
-- [ ] 1.1 建立 npm workspaces 根結構（`package.json`、`packages/server`、`packages/client`、共用 tsconfig、.gitignore）
-- [ ] 1.2 初始化 server（Express + TS + better-sqlite3，含 dev/build/start scripts）
-- [ ] 1.3 初始化 client（Vite + React + TS + Tailwind + React Router，含品牌色 design tokens）
-- [ ] 1.4 建立 SQLite schema 與 migration/init（categories、photos、plans 資料表）與啟動時環境變數檢查
+- [x] 1.1 建立 npm workspaces 根結構（`package.json`、`packages/server`、`packages/client`、共用 tsconfig、.gitignore）
+- [x] 1.2 初始化 server（Express + TS + better-sqlite3，含 dev/build/start scripts）
+- [x] 1.3 初始化 client（Vite + React + TS + Tailwind + React Router，含品牌色 design tokens）
+- [x] 1.4 建立 SQLite schema 與 migration/init（categories、photos、plans 資料表）與啟動時環境變數檢查
 
 ## 2. 後端 API
 
