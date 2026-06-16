@@ -49,7 +49,47 @@ export function initDb(): void {
     `INSERT OR IGNORE INTO settings (key, value) VALUES ('siteDisplayName', 'KEVIN PHOTOGRAPHY')`
   ).run();
 
+  seedInitialData();
   migratePhotoDimensions();
+}
+
+function seedInitialData(): void {
+  const categoryCount = (
+    db.prepare(`SELECT COUNT(*) as n FROM categories`).get() as { n: number }
+  ).n;
+  if (categoryCount > 0) return;
+
+  const defaultCategories = ['形象照', '商品攝影', '活動拍攝', '婚禮紀錄'];
+  const insertCategory = db.prepare(
+    `INSERT INTO categories (name, sort_order) VALUES (?, ?)`
+  );
+  defaultCategories.forEach((name, i) => insertCategory.run(name, i));
+
+  const planCount = (
+    db.prepare(`SELECT COUNT(*) as n FROM plans`).get() as { n: number }
+  ).n;
+  if (planCount > 0) return;
+
+  const defaultPlans = [
+    {
+      name: '基礎方案',
+      description: '適合小型拍攝需求',
+      items: JSON.stringify(['2 小時拍攝', '50 張精修照片', '線上相簿交付']),
+      price: 8000,
+      sort_order: 0,
+    },
+    {
+      name: '進階方案',
+      description: '完整拍攝服務，適合婚禮或商業活動',
+      items: JSON.stringify(['6 小時拍攝', '200 張精修照片', '線上相簿 + 隨身碟交付', '一套服裝搭配建議']),
+      price: 25000,
+      sort_order: 1,
+    },
+  ];
+  const insertPlan = db.prepare(
+    `INSERT INTO plans (name, description, items, price, published, sort_order) VALUES (?, ?, ?, ?, 0, ?)`
+  );
+  defaultPlans.forEach((p) => insertPlan.run(p.name, p.description, p.items, p.price, p.sort_order));
 }
 
 /**

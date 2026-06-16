@@ -1,0 +1,22 @@
+services:
+  photo-site:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: photo-site:latest
+    container_name: photo-site
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      SESSION_SECRET: ${SESSION_SECRET}
+    volumes:
+      - ./data:/data
+    env_file:
+      - path: .env
+        required: false

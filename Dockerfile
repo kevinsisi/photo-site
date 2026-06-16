@@ -2,9 +2,13 @@ FROM node:22-bookworm-slim AS build
 
 WORKDIR /app
 
+COPY fortinet-ca.crt /usr/local/share/ca-certificates/fortinet.crt
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ pkg-config \
+  && apt-get install -y --no-install-recommends ca-certificates python3 make g++ pkg-config \
+  && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
+
+ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/server/package.json packages/server/package.json

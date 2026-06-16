@@ -34,6 +34,6 @@
 
 - [x] 5.1 multi-stage Dockerfile（amd64 目標）+ docker-compose（`/data` volume、環境變數）
 - [x] 5.2 反向代理相容：trust proxy、cookie secure 設定、桌機 nginx 內部反代設定
-- [ ] 5.3 本機端對端驗證：build → compose up → 走過上傳/編輯/刪除/前台瀏覽全流程，確認容器重建後資料保留
-- [ ] 5.4 種子資料：預設分類與範例價目方案
-- [ ] 5.5 完成檢查：依 completion-checklist 跑 build 驗證、更新 spec、commit + push
+- [x] 5.3 本機端對端驗證：build → compose up → 走過上傳/編輯/刪除/前台瀏覽全流程，確認容器重建後資料保留
+- [x] 5.4 種子資料：預設分類與範例價目方案
+- [x] 5.5 完成檢查：依 completion-checklist 跑 build 驗證、更新 spec、commit + push
