@@ -1,17 +1,6 @@
-name: Deploy to amd64 Desktop
+name: Manual fallback deploy to amd64 Desktop
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'packages/**'
-      - 'Dockerfile'
-      - 'deploy/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.base.json'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 jobs:
