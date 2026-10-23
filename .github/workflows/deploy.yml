@@ -1,84 +1,57 @@
-name: Deploy to amd64 Desktop
+name: Deploy to NAS
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Build and Push Docker Image"]
+    types:
+      - completed
     branches:
       - main
-    paths:
-      - 'packages/**'
-      - 'Dockerfile'
-      - 'deploy/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'tsconfig.base.json'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: kevin950805
+  IMAGE_NAME: photo-site
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+  DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/volume1/docker/photo-site' }}
 
 jobs:
   deploy:
-    runs-on: [self-hosted, photo-site-prod]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - name: Sync source and proxy files
+      - name: Setup SSH
         run: |
-          set -e
-          SOURCE_PATH=/home/kevin/DockerCompose/photo-site/source
-          PROXY_DEPLOY_PATH=/home/kevin/DockerCompose/photo-site-proxy
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEPLOY_SERVER_IP }} >> ~/.ssh/known_hosts
 
-          mkdir -p "$SOURCE_PATH" "$PROXY_DEPLOY_PATH" /srv/data4tb/photo-site/data
-          tar \
-            --exclude=.git \
-            --exclude=node_modules \
-            --exclude='packages/*/node_modules' \
-            --exclude='packages/*/dist' \
-            --exclude=data \
-            --exclude='.env*' \
-            -czf /tmp/photo-site-source.tgz .
-          tar -xzf /tmp/photo-site-source.tgz -C "$SOURCE_PATH"
-
-          cp deploy/proxy/docker-compose.yml "$PROXY_DEPLOY_PATH/docker-compose.yml"
-          cp deploy/proxy/nginx.conf "$PROXY_DEPLOY_PATH/nginx.conf"
-
-      - name: Deploy app and proxy
+      - name: Sync compose file
         run: |
-          set -e
-          cd /home/kevin/DockerCompose/photo-site/source/deploy
-          docker compose up -d --build --force-recreate
-          cd /home/kevin/DockerCompose/photo-site-proxy
-          docker compose up -d --force-recreate
-          docker image prune -af --filter 'until=24h' || true
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${{ secrets.DEPLOY_SERVER_IP }}" "mkdir -p '${DEPLOY_PATH}'"
+          scp -O -i ~/.ssh/deploy_key docker-compose.yml "${DEPLOY_USER}@${{ secrets.DEPLOY_SERVER_IP }}:${DEPLOY_PATH}/docker-compose.yml"
+
+      - name: Deploy via SSH
+        run: |
+          ssh -i ~/.ssh/deploy_key "${DEPLOY_USER}@${{ secrets.DEPLOY_SERVER_IP }}" "
+            set -e
+            cd '${DEPLOY_PATH}'
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -af --filter 'until=24h' || true
+            docker compose ps
+          "
 
       - name: Health check
         run: |
-          set -e
           for i in $(seq 1 24); do
             if curl -fsS https://ching.sisihome.org/api/categories; then
               exit 0
             fi
             sleep 5
           done
-
-          cd /home/kevin/DockerCompose/photo-site/source/deploy
-          docker compose ps
-          docker logs photo-site --tail 80
           exit 1
-
-      - name: Admin session check
-        env:
-          ADMIN_USERNAME: ${{ secrets.PHOTO_SITE_ADMIN_USERNAME }}
-          ADMIN_PASSWORD: ${{ secrets.PHOTO_SITE_ADMIN_PASSWORD }}
-        run: |
-          set -e
-          if [ -z "${ADMIN_USERNAME}" ] || [ -z "${ADMIN_PASSWORD}" ]; then
-            echo "Skipping admin session check because PHOTO_SITE_ADMIN_USERNAME/PASSWORD are not set."
-            exit 0
-          fi
-
-          cookie_file="$(mktemp)"
-          curl -fsS -c "$cookie_file" \
-            -H 'Content-Type: application/json' \
-            -d "{\"username\":\"${ADMIN_USERNAME}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-            https://ching.sisihome.org/api/admin/login
-          curl -fsS -b "$cookie_file" https://ching.sisihome.org/api/admin/me
